@@ -1,8 +1,8 @@
 let quotes = [];
-let categories = new Set();
+let categories = new Set(['All Categories']);
 
-// Load quotes from local storage on initialization
-function loadQuotes() {
+// Load quotes and categories from local storage on initialization
+function loadQuotesAndCategories() {
     const storedQuotes = localStorage.getItem('quotes');
     if (storedQuotes) {
         quotes = JSON.parse(storedQuotes);
@@ -26,9 +26,9 @@ function saveQuotes() {
 
 // Update categories set and dropdown
 function updateCategories() {
-    categories = new Set(quotes.map(quote => quote.category));
+    categories = new Set(['All Categories', ...quotes.map(quote => quote.category)]);
     const categoryFilter = document.getElementById('categoryFilter');
-    categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+    categoryFilter.innerHTML = '';
     categories.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
@@ -37,7 +37,7 @@ function updateCategories() {
     });
 }
 
-// Function to display quotes based on selected category
+// Function to filter and display quotes based on selected category
 function filterQuotes() {
     const selectedCategory = document.getElementById('categoryFilter').value;
     localStorage.setItem('lastSelectedCategory', selectedCategory);
@@ -45,7 +45,7 @@ function filterQuotes() {
     const quoteDisplay = document.getElementById('quoteDisplay');
     quoteDisplay.innerHTML = '';
 
-    const filteredQuotes = selectedCategory === 'all' 
+    const filteredQuotes = selectedCategory === 'All Categories' 
         ? quotes 
         : quotes.filter(quote => quote.category === selectedCategory);
 
@@ -75,47 +75,16 @@ function addQuote() {
     }
 }
 
-// Function to export quotes to JSON file
-function exportQuotes() {
-    const jsonString = JSON.stringify(quotes, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'quotes.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// Function to import quotes from JSON file
-function importFromJsonFile(event) {
-    const fileReader = new FileReader();
-    fileReader.onload = function(event) {
-        try {
-            const importedQuotes = JSON.parse(event.target.result);
-            quotes = quotes.concat(importedQuotes);
-            saveQuotes();
-            alert('Quotes imported successfully!');
-            filterQuotes(); // Refresh displayed quotes
-        } catch (error) {
-            alert('Error importing quotes. Please check the file format.');
-        }
-    };
-    fileReader.readAsText(event.target.files[0]);
-}
-
 // Initialize the application
 function init() {
-    loadQuotes();
-    updateCategories();
+    loadQuotesAndCategories();
     
     // Restore last selected category
     const lastSelectedCategory = localStorage.getItem('lastSelectedCategory');
-    if (lastSelectedCategory) {
+    if (lastSelectedCategory && categories.has(lastSelectedCategory)) {
         document.getElementById('categoryFilter').value = lastSelectedCategory;
+    } else {
+        document.getElementById('categoryFilter').value = 'All Categories';
     }
     
     filterQuotes(); // Initial display of quotes
@@ -124,8 +93,6 @@ function init() {
 // Event listeners
 document.getElementById('categoryFilter').addEventListener('change', filterQuotes);
 document.getElementById('addQuoteBtn').addEventListener('click', addQuote);
-document.getElementById('exportQuotes').addEventListener('click', exportQuotes);
-document.getElementById('importFile').addEventListener('change', importFromJsonFile);
 
 // Initialize the application
 init();
