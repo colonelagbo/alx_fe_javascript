@@ -1,5 +1,6 @@
 let quotes = [];
 let categories = new Set(['All Categories']);
+const API_URL = 'https://jsonplaceholder.typicode.com/posts';
 
 // Load quotes and categories from local storage on initialization
 function loadQuotesAndCategories() {
@@ -10,9 +11,9 @@ function loadQuotesAndCategories() {
     } else {
         // Default quotes if storage is empty
         quotes = [
-            { text: "Be the change you wish to see in the world.", category: "Inspiration" },
-            { text: "The only way to do great work is to love what you do.", category: "Work" },
-            { text: "Life is what happens when you're busy making other plans.", category: "Life" }
+            { id: 1, text: "Be the change you wish to see in the world.", category: "Inspiration" },
+            { id: 2, text: "The only way to do great work is to love what you do.", category: "Work" },
+            { id: 3, text: "Life is what happens when you're busy making other plans.", category: "Life" }
         ];
         saveQuotes();
     }
@@ -64,8 +65,14 @@ function addQuote() {
     const newQuoteCategory = document.getElementById('newQuoteCategory').value;
 
     if (newQuoteText && newQuoteCategory) {
-        quotes.push({ text: newQuoteText, category: newQuoteCategory });
+        const newQuote = { 
+            id: Date.now(), // Use timestamp as a simple unique id
+            text: newQuoteText, 
+            category: newQuoteCategory 
+        };
+        quotes.push(newQuote);
         saveQuotes();
+        syncWithServer(newQuote);
         alert('New quote added successfully!');
         document.getElementById('newQuoteText').value = '';
         document.getElementById('newQuoteCategory').value = '';
@@ -73,6 +80,59 @@ function addQuote() {
     } else {
         alert('Please enter both quote text and category.');
     }
+}
+
+// Simulate syncing with server
+async function syncWithServer(newQuote = null) {
+    try {
+        if (newQuote) {
+            // Simulate posting new quote to server
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(newQuote),
+                headers: {
+                    'Content-type': 'application/json; charset=UTF-8',
+                },
+            });
+            const data = await response.json();
+            console.log('Quote synced with server:', data);
+        }
+
+        // Simulate fetching updates from server
+        const response = await fetch(API_URL);
+        const serverQuotes = await response.json();
+        
+        // Simple conflict resolution: server data takes precedence
+        serverQuotes.forEach(serverQuote => {
+            const localQuote = quotes.find(q => q.id === serverQuote.id);
+            if (!localQuote) {
+                quotes.push({
+                    id: serverQuote.id,
+                    text: serverQuote.title, // JSONPlaceholder uses 'title' instead of 'text'
+                    category: 'Uncategorized' // Assign a default category
+                });
+            } else if (localQuote.text !== serverQuote.title) {
+                localQuote.text = serverQuote.title;
+                notifyUser(`Quote updated: "${serverQuote.title}"`);
+            }
+        });
+
+        saveQuotes();
+        filterQuotes(); // Refresh displayed quotes
+    } catch (error) {
+        console.error('Error syncing with server:', error);
+        notifyUser('Failed to sync with server. Please try again later.');
+    }
+}
+
+// Notify user of updates or conflicts
+function notifyUser(message) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.display = 'block';
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 5000);
 }
 
 // Initialize the application
@@ -88,6 +148,9 @@ function init() {
     }
     
     filterQuotes(); // Initial display of quotes
+    
+    // Set up periodic sync
+    setInterval(syncWithServer, 60000); // Sync every minute
 }
 
 // Event listeners
